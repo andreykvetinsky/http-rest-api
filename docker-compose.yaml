@@ -1,0 +1,24 @@
+---
+services:
+  app:
+    image: docker-apiserver:latest
+    container_name: ps-app
+    depends_on:
+      - postgresql
+    networks:
+      - ps
+
+  postgresql:
+    image: postgres:14-alpine
+    container_name: ps-psql
+    environment:
+      - POSTGRES_DB=restapi_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - ps
+
+networks:
+  ps:
