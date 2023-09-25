@@ -15,9 +15,10 @@ build:
 		go build -v ./cmd/apiserver
 
 build_image:
-		docker build --tag docker-apiserver .
+		docker build --tag andreikvetinskii/docker-apiserver:latest .
 containers_up:
 		docker compose up -d
 		docker compose -f docker-compose.yaml --profile tools run --rm migrate up
+#		docker compose -f docker-compose.yaml --profile tools run --rm migrate down
+		
 
-# .DEFAULT_GOAL := build

@@ -1,7 +1,7 @@
 ---
 services:
   app:
-    image: docker-apiserver:latest
+    image: andreikvetinskii/docker-apiserver:latest
     container_name: ps-app
     depends_on:
       postgresql:
