@@ -12,7 +12,7 @@ http-rest-api
 
     docker compose -f docker-compose.yaml --profile tools run --rm migrate up
 
-    После можно удалить таблицу юзеровЖ
+    После можно удалить таблицу юзеров:
 
     docker compose -f docker-compose.yaml --profile tools run --rm migrate down
 
