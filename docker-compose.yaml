@@ -12,6 +12,23 @@ services:
     ports:
       - 8080:8080
 
+  postgresql:
+    image: postgres:14-alpine
+    container_name: ps-psql
+    environment:
+      - POSTGRES_DB=restapi_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: always
+    networks:
+      - http-rest-api_bridge
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
   migrate:
     image: migrate/migrate:v4.15.2
     profiles: ["tools"]
@@ -32,27 +49,6 @@ services:
     restart: on-failure
     networks:
       - http-rest-api_bridge
-
-  postgresql:
-    image: postgres:14-alpine
-    container_name: ps-psql
-    environment:
-      - POSTGRES_DB=restapi_dev
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    restart: always
-    volumes:
-      - ./data:/var/lib/postgresql/data
-    networks:
-      - http-rest-api_bridge
-    ports:
-      - 5433:5432
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-
 networks:
   http-rest-api_bridge:
+    name: http-rest-api_bridge

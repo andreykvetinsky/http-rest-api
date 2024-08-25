@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
@@ -64,6 +65,10 @@ func (s *server) configureRouter() {
 	private := s.router.PathPrefix("/private").Subrouter()
 	private.Use(s.authenticateUser)
 	private.HandleFunc("/whoami", s.handleWhoami()).Methods("GET")
+	private.HandleFunc("/notes", s.handleNotesGet()).Methods("GET")
+	private.HandleFunc("/notes", s.handleNoteCreate()).Methods("POST")
+	private.HandleFunc("/notes/{id}", s.handleNoteDelete()).Methods("POST")
+
 }
 
 func (s *server) setRequestID(next http.Handler) http.Handler {
@@ -119,6 +124,55 @@ func (s *server) authenticateUser(next http.Handler) http.Handler {
 func (s *server) handleWhoami() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.respond(w, r, http.StatusOK, r.Context().Value(ctxKeyUser).(*model.User))
+	}
+}
+
+func (s *server) handleNotesGet() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
+		notes, err := s.store.Note().FindAllNotesByUserID(uCtx.ID)
+		if err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusOK, notes)
+	}
+}
+
+func (s *server) handleNoteCreate() http.HandlerFunc {
+	type request struct {
+		Note string `json:"note"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
+		n := &model.Note{
+			User_ID: uCtx.ID,
+			Note:    req.Note,
+		}
+
+		if err := s.store.Note().Create(n); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusCreated, n)
+	}
+}
+func (s *server) handleNoteDelete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		params := mux.Vars(r)
+		id, _ := strconv.Atoi(params["id"])
+		if err := s.store.Note().DeleteNote(id); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusOK, nil)
 	}
 }
 

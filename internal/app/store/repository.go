@@ -9,3 +9,10 @@ type UserRepository interface {
 	FindByEmail(string) (*model.User, error)
 	DeleteByEmail(string) error
 }
+
+type NoteRepository interface {
+	Create(*model.Note) error
+	Find(int) (*model.Note, error)
+	FindAllNotesByUserID(int) ([]*model.Note, error)
+	DeleteNote(int) error
+}

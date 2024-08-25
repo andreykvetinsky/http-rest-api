@@ -13,3 +13,11 @@ func TestUser(t *testing.T) *User {
 		Password: "password",
 	}
 }
+
+func TestNote(t *testing.T) *Note {
+
+	return &Note{
+		User_ID: 1,
+		Note:    "conquer Everest",
+	}
+}
