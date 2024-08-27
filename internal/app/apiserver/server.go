@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
-	"time"
 
 	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
 	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
@@ -37,10 +37,26 @@ type server struct {
 	sessionStore sessions.Store
 }
 
+var log = logrus.New()
+
 func newServer(store store.Store, sessionStore sessions.Store) *server {
+	log.Out = os.Stdout
+	err := os.MkdirAll("logs", 0777)
+	if err != nil {
+		log.Infof("Failed to create directory using default stdout, %v", err)
+	} else {
+		file, err := os.OpenFile("logs/all.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0640)
+		if err == nil {
+			log.Info("Create directory using file for log")
+			log.Out = file
+		} else {
+			log.Infof("Failed to log to file, using default stderr, %v", err)
+		}
+	}
+
 	s := &server{
 		router:       mux.NewRouter(),
-		logger:       logrus.New(),
+		logger:       log,
 		store:        store,
 		sessionStore: sessionStore,
 	}
@@ -58,8 +74,8 @@ func (s *server) configureRouter() {
 	s.router.Use(s.setRequestID)
 	s.router.Use(s.logRequest)
 	s.router.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
-	s.router.HandleFunc("/users", s.handleUsersCreate()).Methods("POST")
-	s.router.HandleFunc("/users", s.handleUsersDelete()).Methods("DELETE")
+	s.router.HandleFunc("/users", s.handleUserCreate()).Methods("POST")
+	s.router.HandleFunc("/users", s.handleUserDelete()).Methods("DELETE")
 	s.router.HandleFunc("/session", s.handleSessionsCreate()).Methods("POST")
 
 	private := s.router.PathPrefix("/private").Subrouter()
@@ -67,8 +83,7 @@ func (s *server) configureRouter() {
 	private.HandleFunc("/whoami", s.handleWhoami()).Methods("GET")
 	private.HandleFunc("/notes", s.handleNotesGet()).Methods("GET")
 	private.HandleFunc("/notes", s.handleNoteCreate()).Methods("POST")
-	private.HandleFunc("/notes/{id}", s.handleNoteDelete()).Methods("POST")
-
+	private.HandleFunc("/notes/{id}", s.handleNoteDelete()).Methods("DELETE")
 }
 
 func (s *server) setRequestID(next http.Handler) http.Handler {
@@ -87,96 +102,17 @@ func (s *server) logRequest(next http.Handler) http.Handler {
 		})
 		logger.Infof("started %s %s", r.Method, r.RequestURI)
 
-		start := time.Now()
 		rw := &responseWriter{w, http.StatusOK}
 		next.ServeHTTP(rw, r)
 
 		logger.Infof(
-			"completed with %d %s in %v",
+			"completed with %d %s",
 			rw.code,
 			http.StatusText(rw.code),
-			time.Now().Sub(start),
 		)
 	})
 }
-
-func (s *server) authenticateUser(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := s.sessionStore.Get(r, sessionName)
-		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		id, ok := session.Values["user_id"]
-		if !ok {
-			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
-			return
-		}
-		u, err := s.store.User().Find(id.(int))
-		if err != nil {
-			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
-			return
-		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKeyUser, u)))
-	})
-}
-
-func (s *server) handleWhoami() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s.respond(w, r, http.StatusOK, r.Context().Value(ctxKeyUser).(*model.User))
-	}
-}
-
-func (s *server) handleNotesGet() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
-		notes, err := s.store.Note().FindAllNotesByUserID(uCtx.ID)
-		if err != nil {
-			s.error(w, r, http.StatusUnprocessableEntity, err)
-			return
-		}
-		s.respond(w, r, http.StatusOK, notes)
-	}
-}
-
-func (s *server) handleNoteCreate() http.HandlerFunc {
-	type request struct {
-		Note string `json:"note"`
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		req := &request{}
-		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
-			return
-		}
-
-		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
-		n := &model.Note{
-			User_ID: uCtx.ID,
-			Note:    req.Note,
-		}
-
-		if err := s.store.Note().Create(n); err != nil {
-			s.error(w, r, http.StatusUnprocessableEntity, err)
-			return
-		}
-		s.respond(w, r, http.StatusCreated, n)
-	}
-}
-func (s *server) handleNoteDelete() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		params := mux.Vars(r)
-		id, _ := strconv.Atoi(params["id"])
-		if err := s.store.Note().DeleteNote(id); err != nil {
-			s.error(w, r, http.StatusUnprocessableEntity, err)
-			return
-		}
-		s.respond(w, r, http.StatusOK, nil)
-	}
-}
-
-func (s *server) handleUsersCreate() http.HandlerFunc {
+func (s *server) handleUserCreate() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -202,16 +138,53 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 	}
 
 }
-
-func (s *server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
-	s.respond(w, r, code, map[string]string{"error": err.Error()})
-}
-
-func (s *server) respond(w http.ResponseWriter, r *http.Request, code int, data interface{}) {
-	w.WriteHeader(code)
-	if data != nil {
-		json.NewEncoder(w).Encode(data)
+func (s *server) handleUserDelete() http.HandlerFunc {
+	type request struct {
+		Email string `json:"email"`
 	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+		_, err := s.store.User().FindByEmail(req.Email)
+		if err != nil {
+			s.error(w, r, http.StatusNotFound, err)
+			return
+		}
+
+		email := req.Email
+
+		if err := s.store.User().DeleteByEmail(email); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, email)
+	}
+
+}
+func (s *server) authenticateUser(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.sessionStore.Get(r, sessionName)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		id, ok := session.Values["user_id"]
+		if !ok {
+			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
+			return
+		}
+		u, err := s.store.User().Find(id.(int))
+		if err != nil {
+			s.error(w, r, http.StatusUnauthorized, errNotAuthenticated)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKeyUser, u)))
+	})
 }
 
 func (s *server) handleSessionsCreate() http.HandlerFunc {
@@ -248,9 +221,15 @@ func (s *server) handleSessionsCreate() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleUsersDelete() http.HandlerFunc {
+func (s *server) handleWhoami() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.respond(w, r, http.StatusOK, r.Context().Value(ctxKeyUser).(*model.User))
+	}
+}
+
+func (s *server) handleNoteCreate() http.HandlerFunc {
 	type request struct {
-		Email string `json:"email"`
+		Note string `json:"note"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -259,20 +238,52 @@ func (s *server) handleUsersDelete() http.HandlerFunc {
 			s.error(w, r, http.StatusBadRequest, err)
 			return
 		}
-		_, err := s.store.User().FindByEmail(req.Email)
-		if err != nil {
-			s.error(w, r, http.StatusNotFound, err)
-			return
+
+		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
+		n := &model.Note{
+			User_ID: uCtx.ID,
+			Note:    req.Note,
 		}
 
-		email := req.Email
-
-		if err := s.store.User().DeleteByEmail(email); err != nil {
+		if err := s.store.Note().Create(n); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
-
-		s.respond(w, r, http.StatusOK, email)
+		s.respond(w, r, http.StatusCreated, n)
 	}
+}
 
+func (s *server) handleNoteDelete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		params := mux.Vars(r)
+		id, _ := strconv.Atoi(params["id"])
+		if err := s.store.Note().DeleteNote(id); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusOK, nil)
+	}
+}
+
+func (s *server) handleNotesGet() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
+		notes, err := s.store.Note().FindAllNotesByUserID(uCtx.ID)
+		if err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusOK, notes)
+	}
+}
+
+func (s *server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
+	s.respond(w, r, code, map[string]string{"error": err.Error()})
+}
+
+func (s *server) respond(w http.ResponseWriter, r *http.Request, code int, data interface{}) {
+	w.WriteHeader(code)
+	if data != nil {
+		json.NewEncoder(w).Encode(data)
+	}
 }

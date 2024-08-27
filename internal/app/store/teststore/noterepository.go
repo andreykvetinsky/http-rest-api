@@ -15,16 +15,7 @@ type NoteRepository struct {
 
 // Create ...
 func (r *NoteRepository) Create(n *model.Note) error {
-	// if err := u.Validate(); err != nil {
-	// 	return err
-	// }
-
-	// if err := u.BeforeCreate(); err != nil {
-	// 	return err
-	// }
-
 	n.ID = len(r.notes) + 1
-
 	r.notes[n.ID] = n
 
 	return nil
@@ -32,12 +23,12 @@ func (r *NoteRepository) Create(n *model.Note) error {
 
 // Find ...
 func (r *NoteRepository) Find(id int) (*model.Note, error) {
-	u, ok := r.notes[id]
+	n, ok := r.notes[id]
 	if !ok {
 		return nil, store.ErrRecordNotFound
 	}
 
-	return u, nil
+	return n, nil
 }
 
 // FindAllNotesByUserID...

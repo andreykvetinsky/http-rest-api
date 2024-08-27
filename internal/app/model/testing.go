@@ -18,6 +18,6 @@ func TestNote(t *testing.T) *Note {
 
 	return &Note{
 		User_ID: 1,
-		Note:    "conquer Everest",
+		Note:    "conqquer Everest",
 	}
 }

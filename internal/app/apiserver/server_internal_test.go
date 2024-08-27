@@ -57,7 +57,7 @@ func TestServer_AuthenticateUser(t *testing.T) {
 		})
 	}
 }
-func TestServer_HandleUsersCreate(t *testing.T) {
+func TestServer_HandleUserCreate(t *testing.T) {
 	s := newServer(teststore.New(), sessions.NewCookieStore([]byte("secret")))
 
 	testCases := []struct {
@@ -154,7 +154,7 @@ func TestServer_HandleSessionCreate(t *testing.T) {
 
 }
 
-func TestServer_HandleUsersDelete(t *testing.T) {
+func TestServer_HandleUserDelete(t *testing.T) {
 
 	u := model.TestUser(t)
 	store := teststore.New()

@@ -17,7 +17,6 @@ func TestUserRepository_Create(t *testing.T) {
 }
 
 func TestUserRepository_Find(t *testing.T) {
-
 	s := teststore.New()
 	u1 := model.TestUser(t)
 	err := s.User().Create(u1)
