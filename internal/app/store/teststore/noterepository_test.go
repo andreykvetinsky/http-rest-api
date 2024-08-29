@@ -3,9 +3,9 @@ package teststore_test
 import (
 	"testing"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store/teststore"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/model"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store/teststore"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,6 +51,18 @@ func TestUserRepository_DeleteNote(t *testing.T) {
 	err := s.Note().DeleteNote(n.ID)
 	assert.NoError(t, err)
 	n1, err := s.Note().Find(n.ID)
+	assert.Error(t, err)
+	assert.Nil(t, n1)
+}
+
+func TestUserRepository_DeleteNotes(t *testing.T) {
+	s := teststore.New()
+
+	n := model.TestNote(t)
+	s.Note().Create(n)
+	err := s.Note().DeleteNotes(n.User_ID)
+	assert.NoError(t, err)
+	n1, err := s.Note().Find(n.User_ID)
 	assert.Error(t, err)
 	assert.Nil(t, n1)
 }

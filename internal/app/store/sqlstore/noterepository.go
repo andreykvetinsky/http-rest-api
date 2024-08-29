@@ -3,8 +3,8 @@ package sqlstore
 import (
 	"database/sql"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/model"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
 )
 
 // UserRepository...
@@ -33,7 +33,7 @@ func (r *NoteRepository) Find(id int) (*model.Note, error) {
 	n := &model.Note{}
 
 	if err := r.store.db.QueryRow(
-		"SELECT id, user_id, note  FROM users WHERE id = $1",
+		"SELECT id, user_id, note  FROM notes WHERE id = $1",
 		id,
 	).Scan(
 		&n.ID,
@@ -72,6 +72,9 @@ func (r *NoteRepository) FindAllNotesByUserID(id int) ([]*model.Note, error) {
 		}
 		notes = append(notes, n)
 	}
+	if len(notes) == 0 {
+		return nil, store.ErrRecordNotFound
+	}
 	return notes, nil
 }
 
@@ -79,5 +82,12 @@ func (r *NoteRepository) DeleteNote(id int) error {
 	return r.store.db.QueryRow(
 		"DELETE FROM notes WHERE id = $1",
 		id,
+	).Err()
+}
+
+func (r *NoteRepository) DeleteNotes(user_id int) error {
+	return r.store.db.QueryRow(
+		"DELETE FROM notes WHERE user_id = $1",
+		user_id,
 	).Err()
 }

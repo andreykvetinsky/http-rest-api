@@ -17,7 +17,7 @@ func TestUser(t *testing.T) *User {
 func TestNote(t *testing.T) *Note {
 
 	return &Note{
-		User_ID: 1,
+		User_ID: 1779,
 		Note:    "conqquer Everest",
 	}
 }

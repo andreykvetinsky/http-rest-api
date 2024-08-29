@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/model"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -84,6 +84,8 @@ func (s *server) configureRouter() {
 	private.HandleFunc("/notes", s.handleNotesGet()).Methods("GET")
 	private.HandleFunc("/notes", s.handleNoteCreate()).Methods("POST")
 	private.HandleFunc("/notes/{id}", s.handleNoteDelete()).Methods("DELETE")
+	private.HandleFunc("/notes", s.handleNotesDelete()).Methods("DELETE")
+
 }
 
 func (s *server) setRequestID(next http.Handler) http.Handler {
@@ -258,6 +260,17 @@ func (s *server) handleNoteDelete() http.HandlerFunc {
 		params := mux.Vars(r)
 		id, _ := strconv.Atoi(params["id"])
 		if err := s.store.Note().DeleteNote(id); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+		s.respond(w, r, http.StatusOK, nil)
+	}
+}
+
+func (s *server) handleNotesDelete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uCtx := r.Context().Value(ctxKeyUser).(*model.User)
+		if err := s.store.Note().DeleteNotes(uCtx.ID); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}

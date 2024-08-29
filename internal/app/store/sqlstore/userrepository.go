@@ -3,8 +3,8 @@ package sqlstore
 import (
 	"database/sql"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/model"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
 )
 
 // UserRepository...

@@ -3,8 +3,8 @@ package teststore
 import (
 	"errors"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/model"
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/model"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
 )
 
 // UserRepository ...
@@ -53,6 +53,19 @@ func (r *NoteRepository) DeleteNote(id int) error {
 	_, ok := r.notes[id]
 	if ok {
 		delete(r.notes, id)
+		return nil
+	}
+	// }
+	return err
+}
+
+// DeleteNote...
+func (r *NoteRepository) DeleteNotes(user_id int) error {
+	///....
+	var err error = errors.New("not found id or incorrect id")
+	// for _, n := range r.notes {
+	if r.notes != nil {
+		r.notes = nil
 		return nil
 	}
 	// }

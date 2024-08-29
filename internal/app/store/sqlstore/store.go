@@ -3,7 +3,7 @@ package sqlstore
 import (
 	"database/sql"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store"
 	_ "github.com/golang-migrate/migrate/v4"
 	_ "github.com/lib/pq"
 )

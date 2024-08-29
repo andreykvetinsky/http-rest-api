@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/andreykvetinsky/http-rest-api/internal/app/store/sqlstore"
+	"github.com/andreykvetinsky/http-rest-api-notes/internal/app/store/sqlstore"
 	"github.com/gorilla/sessions"
 )
 
