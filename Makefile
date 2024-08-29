@@ -11,10 +11,10 @@ test1:
 
 #.PHONY:
 build:
-#		 go build -v ./cmd/apiserver
+		 go build -v ./cmd/apiserver
 
 build_image:
-#		docker build --tag andreikvetinskii/docker-apiserver:latest .
+		docker build --tag andreikvetinskii/docker-apiserver:latest .
 containers_up:
 		docker compose up -d
 		docker compose -f docker-compose.yaml --profile tools run --rm migrate up
